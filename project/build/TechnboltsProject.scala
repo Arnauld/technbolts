@@ -59,9 +59,10 @@ class TechnboltsProject(info: ProjectInfo) extends ParentProject(info) {
    * Subprojects
    * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-  lazy val technbolts_util       = project("technbolts-util",    "technbolts-util",    new TechnboltsUtilProject(_))
-  lazy val technbolts_http       = project("technbolts-http",    "technbolts-http",    new TechnboltsHttpProject(_), technbolts_util)
-  lazy val technbolts_couchDB    = project("technbolts-couchdb", "technbolts-couchdb", new TechnboltsCouchDBProject(_), technbolts_http)
+  lazy val technbolts_util       = project("technbolts-util",     "technbolts-util",     new TechnboltsUtilProject(_))
+  lazy val technbolts_http       = project("technbolts-http",     "technbolts-http",     new TechnboltsHttpProject(_), technbolts_util)
+  lazy val technbolts_couchdb    = project("technbolts-couchdb",  "technbolts-couchdb",  new TechnboltsCouchDBProject(_), technbolts_http)
+  lazy val technbolts_usecases   = project("technbolts-usecases", "technbolts-usecases", new TechnboltsUseCasesProject(_)) 
 
   class TechnboltsUtilProject(info: ProjectInfo) extends TechnboltsProject(info) {
   }
@@ -73,8 +74,12 @@ class TechnboltsProject(info: ProjectInfo) extends ParentProject(info) {
 	val commons_io     = Dependencies.Commons.io
   }
   
-  class TechnboltsCouchDBProject(info: ProjectInfo) extends TechnboltsProject(info) {
+  class TechnboltsCouchDBProject(info: ProjectInfo)  extends TechnboltsProject(info) {
     val spring_core = Dependencies.spring_core % "test->default"
+  }
+  
+  class TechnboltsUseCasesProject(info: ProjectInfo) extends TechnboltsProject(info) with AkkaProject {
+	
   }
   
   class TechnboltsProject(info: ProjectInfo) extends DefaultProject(info) {
