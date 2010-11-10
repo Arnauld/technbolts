@@ -5,6 +5,10 @@ import org.springframework.util.DefaultPropertiesPersister
 import java.util.Properties
 
 object TestSettings {
+
+  import org.slf4j.{Logger, LoggerFactory}
+  private val logger: Logger = LoggerFactory.getLogger(classOf[TestSettings])
+
   def apply() = new TestSettings(loadProperties(classOf[TestSettings].getResource("/test.properties")))
   def apply(url:URL) = new TestSettings(loadProperties(url))
 
@@ -17,5 +21,5 @@ object TestSettings {
 }
 
 class TestSettings(properties:Properties) {
-  def couchDBVersion = properties.getProperty("couchdb.version")
+  def getProperty(key:String) = properties.getProperty(key)
 }

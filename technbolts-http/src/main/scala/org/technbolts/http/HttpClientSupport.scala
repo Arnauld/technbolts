@@ -62,7 +62,9 @@ trait HttpClientSupport {
       Response(statusCode, unmarshalled);
     } catch {
       case e: HttpClientException => throw e
-      case e: Exception => throw new HttpClientException(e);
+      case e: Exception =>
+        logger.error("Ouch!" , e)
+        throw new HttpClientException(e);
     }
   }
 
