@@ -14,13 +14,14 @@ object CouchDB {
   val DEFAULT_HOST = "localhost";
   val DEFAULT_PORT = 5984;
 
-  def apply() = new CouchDB(DEFAULT_HOST, DEFAULT_PORT)
+  def apply():CouchDB = apply(DEFAULT_HOST, Some(DEFAULT_PORT))
 
-  def apply(port: Int) = new CouchDB(DEFAULT_HOST, port)
-
-  def apply(host: String) = new CouchDB(host, DEFAULT_PORT)
-
-  def apply(host: String, port: Int) = new CouchDB(host, port)
+  def apply(host: String, port: Option[Int]):CouchDB = {
+    var rootUrl = if(host.startsWith("http://")) host else ("http://" + host)
+    if(port.isDefined)
+      rootUrl =  rootUrl + ":" + port.get
+    new CouchDB(rootUrl)
+  }
 }
 
 case class Welcome @JsonCreator() (@JsonProperty("couchdb") message:String, @JsonProperty("version") version:String)
@@ -31,16 +32,16 @@ case class Stats  (underlying: JsonNode) {
 /**
  * 
  */
-class CouchDB(val host: String, val port: Int) extends JsonHttpSupport {
+class CouchDB(val rootUrl: String) extends JsonHttpSupport {
 
   import org.slf4j.{Logger, LoggerFactory}
   private val logger: Logger = LoggerFactory.getLogger(classOf[CouchDB])
 
-  val rootUrl = "http://" + host + ":" + port
+  logger.info("CouchDB / " + rootUrl)
+
   override def kneadUrl(url:String) = if(LangUtils.isEmpty(url)) rootUrl
                                       else if(url.startsWith("/")) rootUrl+url
                                       else url
-
 
   /**
    * CouchDB's Welcome
