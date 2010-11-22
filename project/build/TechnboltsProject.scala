@@ -2,6 +2,10 @@ import sbt._
 
 class TechnboltsProject(info: ProjectInfo) extends ParentProject(info) {
 
+  /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+  /* repositories */
+  /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+  val springMilestone = "Spring Framework Maven Milestone Repository" at "http://maven.springframework.org/milestone"
 
   /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
   /* dependencies */
@@ -62,7 +66,8 @@ class TechnboltsProject(info: ProjectInfo) extends ParentProject(info) {
   lazy val technbolts_util = project("technbolts-util", "technbolts-util", new TechnboltsUtilProject(_))
   lazy val technbolts_http = project("technbolts-http", "technbolts-http", new TechnboltsHttpProject(_), technbolts_util)
   lazy val technbolts_couchdb = project("technbolts-couchdb", "technbolts-couchdb", new TechnboltsCouchDBProject(_), technbolts_http)
-  lazy val technbolts_usecases = project("technbolts-usecases", "technbolts-usecases", new TechnboltsUseCasesProject(_))
+  lazy val technbolts_gridi = project("technbolts-gridi", "technbolts-gridi", new TechnboltsGridiProject(_), technbolts_util)
+  lazy val technbolts_usecases = project("technbolts-usecases", "technbolts-usecases", new TechnboltsUseCasesProject(_), technbolts_gridi, technbolts_util)
 
   class TechnboltsUtilProject(info: ProjectInfo) extends TechnboltsProject(info) {
   }
@@ -78,8 +83,17 @@ class TechnboltsProject(info: ProjectInfo) extends ParentProject(info) {
     val spring_core = Dependencies.spring_core % "test->default"
   }
 
-  class TechnboltsUseCasesProject(info: ProjectInfo) extends TechnboltsProject(info) with AkkaProject {
+  class TechnboltsGridiProject(info: ProjectInfo) extends TechnboltsProject(info) {
     val rabbitmq = "com.rabbitmq" % "amqp-client" % "2.1.1"
+    //
+  }
+
+  class TechnboltsUseCasesProject(info: ProjectInfo) extends TechnboltsProject(info) with AkkaProject {
+    //
+    val spring_amqp_version = "1.0.0.M1"
+    val spring_amqp   = "org.springframework.amqp" % "spring-amqp"   % spring_amqp_version
+    val spring_rabbit = "org.springframework.amqp" % "spring-rabbit" % spring_amqp_version
+    val spring_rabbit_admin = "org.springframework.amqp" % "spring-rabbit-admin" % spring_amqp_version
   }
 
   class TechnboltsProject(info: ProjectInfo) extends DefaultProject(info) {
