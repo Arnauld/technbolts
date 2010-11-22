@@ -20,7 +20,9 @@ class StringConverter extends Converter[String] {
   def convertToBytes(value: String) = Bytes.stringToBytes(value)
 
   def convert(delivery: Delivery) = try {
-    Some(Bytes.bytesToString(delivery.body))
+    val value = Bytes.bytesToString(delivery.body)
+    log.debug("Converting data to string: '{}'", value)
+    Some(value)
   } catch {
     case e: Throwable =>
       log.error("Failed to convert delivery: " + delivery, e)

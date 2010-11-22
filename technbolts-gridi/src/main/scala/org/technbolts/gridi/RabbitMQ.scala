@@ -27,7 +27,21 @@ trait RabbitMQ {
 
 object RabbitMQ {
 
-  def newConnectionFactory = new RabbitMQ {}.newConnectionFactory
+  def newDefaultConnectionFactory = new RabbitMQ {}.newConnectionFactory
+  
+  def executeInChannel(connectionFactory:ConnectionFactory, callback: (Channel) => Unit) = {
+    val conn: Connection = connectionFactory.newConnection
+    try {
+      val channel: Channel = conn.createChannel
+      try {
+        callback(channel)
+      } finally {
+        closeQuietly(channel)
+      }
+    } finally {
+      closeQuietly(conn)
+    }
+  }
 
   def close(a:AnyRef) = a match {
     case c:Channel => c.close
