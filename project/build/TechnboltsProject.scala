@@ -17,6 +17,7 @@ class TechnboltsProject(info: ProjectInfo) extends ParentProject(info) {
     val lift = "2.1-RC1"
     val jackson = "1.5.6"
     val spring = "3.0.4.RELEASE"
+    val joda   = "1.6.2"
     object Commons {
       val IO = "1.4"
       val httpclient = "4.0.1"
@@ -37,6 +38,7 @@ class TechnboltsProject(info: ProjectInfo) extends ParentProject(info) {
       lazy val httpClient = "org.apache.httpcomponents" % "httpclient" % Version.Commons.httpclient % "compile"
       lazy val io = "commons-io" % "commons-io" % Version.Commons.IO % "compile"
     }
+    lazy val joda = "joda-time" % "joda-time" % Version.joda % "compile"
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
     /*     spring       */
@@ -67,6 +69,8 @@ class TechnboltsProject(info: ProjectInfo) extends ParentProject(info) {
   lazy val technbolts_http = project("technbolts-http", "technbolts-http", new TechnboltsHttpProject(_), technbolts_util)
   lazy val technbolts_couchdb = project("technbolts-couchdb", "technbolts-couchdb", new TechnboltsCouchDBProject(_), technbolts_http)
   lazy val technbolts_gridi = project("technbolts-gridi", "technbolts-gridi", new TechnboltsGridiProject(_), technbolts_util)
+  lazy val technbolts_grisbi = project("technbolts-grisbi", "technbolts-grisbi", new TechnboltsGrisbiProject(_), technbolts_util)
+  lazy val technbolts_shibi = project("technbolts-shibi", "technbolts-shibi", new TechnboltsShibiProject(_), technbolts_util)
   lazy val technbolts_usecases = project("technbolts-usecases", "technbolts-usecases", new TechnboltsUseCasesProject(_), technbolts_gridi, technbolts_util)
 
   class TechnboltsUtilProject(info: ProjectInfo) extends TechnboltsProject(info) {
@@ -86,6 +90,15 @@ class TechnboltsProject(info: ProjectInfo) extends ParentProject(info) {
   class TechnboltsGridiProject(info: ProjectInfo) extends TechnboltsProject(info) {
     val rabbitmq = "com.rabbitmq" % "amqp-client" % "2.1.1"
     //
+  }
+
+  class TechnboltsGrisbiProject(info: ProjectInfo) extends TechnboltsProject(info) {
+    val joda = Dependencies.joda
+    //
+  }
+
+  class TechnboltsShibiProject (info: ProjectInfo) extends TechnboltsProject(info) {
+    val jruby = "org.jruby" % "jruby-complete" % "1.5.5"
   }
 
   class TechnboltsUseCasesProject(info: ProjectInfo) extends TechnboltsProject(info) with AkkaProject {
