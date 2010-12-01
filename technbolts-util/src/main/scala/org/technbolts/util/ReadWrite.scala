@@ -3,13 +3,10 @@ package org.technbolts.util
 import java.util.concurrent.locks.{Lock, ReentrantReadWriteLock}
 
 object LockSupport {
-
   def withinLock[T](lock:Lock)(f: =>T):T = try {
     lock.lock
     f
-  }finally{
-    lock.unlock
-  }
+  }finally lock.unlock
 }
 
 trait ReadWrite {
