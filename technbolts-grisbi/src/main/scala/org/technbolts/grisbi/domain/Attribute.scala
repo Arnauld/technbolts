@@ -18,3 +18,7 @@ trait HasAttributes {
     case None => None
   }
 }
+
+trait HasMutableAttributes { self:HasAttributes =>
+  def setAttribute(id:AttributeId, value:Any)
+}
