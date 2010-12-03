@@ -9,6 +9,10 @@ trait MQ {
    */
   def exchange(exchangeName:ExchangeName, exchangeType:ExchangeType):ExchangeBuilder
 
+  def direct(exchangeName:ExchangeName) = exchange(exchangeName, ExchangeType.Direct)
+  def fanout(exchangeName:ExchangeName) = exchange(exchangeName, ExchangeType.Fanout)
+  def topic (exchangeName:ExchangeName) = exchange(exchangeName, ExchangeType.Topic)
+
   /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
    * Consumer part
    * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -59,6 +63,7 @@ trait QueueBuilder {
    */
   def using(routingKey:RoutingKey):QueueBuilder = {
     this.routingKeys+=routingKey
+    this
   }
 
   val routingPatterns = ListBuffer[RoutingPattern]()
@@ -70,6 +75,7 @@ trait QueueBuilder {
    */
   def using(routingPattern:RoutingPattern):QueueBuilder = {
     this.routingPatterns+=routingPattern
+    this
   }
 
   var exchangeName:Option[ExchangeName] = None
@@ -112,7 +118,7 @@ trait QueueBuilder {
   def arguments(arg1:(String,Any), arg2:(String,Any), args:(String,Any)*):QueueBuilder = {
     this.arguments += arg1
     this.arguments += arg2
-    args.foreach( this.arguments += _ ) 
+    args.foreach( this.arguments += _ )
     this
   }
 }

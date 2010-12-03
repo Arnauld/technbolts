@@ -24,7 +24,7 @@ sealed trait Message {
 class TextMessage(body:String) extends Message
 
 /**
- * A text based message.<p/>
+ * A binary based message.<p/>
  */
 class BinaryMessage(body:Array[Byte]) extends Message
 

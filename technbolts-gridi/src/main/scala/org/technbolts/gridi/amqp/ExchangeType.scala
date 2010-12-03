@@ -1,6 +1,6 @@
 package org.technbolts.gridi.amqp
 
-sealed trait ExchangeType
+sealed abstract class ExchangeType(val key:String)
 
 /**
  * Direct exchanges can be simulated by using topic exchanges without wildcards, and fanout exchanges can be simulated
@@ -23,7 +23,7 @@ object ExchangeType {
    *   <li> The message is passed to the message queue if K = R.</li>
    * </ol>
    */
-  case class Direct() extends ExchangeType
+  case object Direct extends ExchangeType("direct")
 
   /**
    * Any message sent to a fanout exchange will be delivered to all queues bound to it.
@@ -35,7 +35,7 @@ object ExchangeType {
    *   <li>The message is passed to the message queue unconditionally.</li>
    * </ol>
    */
-  case class Fanout() extends ExchangeType
+  case object Fanout extends ExchangeType("fanout")
 
   /**
    * The topic exchange type works as follows:
@@ -45,5 +45,5 @@ object ExchangeType {
    *   <li>The message is passed to the message queue if R matches P.</li>
    * </ol>
    */
-  case class Topic() extends ExchangeType
+  case object Topic extends ExchangeType("topic")
 }
