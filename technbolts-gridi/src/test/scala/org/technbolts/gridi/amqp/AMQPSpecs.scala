@@ -1,7 +1,6 @@
 package org.technbolts.gridi.amqp
 
 import org.specs.Specification
-import org.technbolts.gridi.amqp.temp.Message
 
 class AMQPSpecs extends Specification {
 
