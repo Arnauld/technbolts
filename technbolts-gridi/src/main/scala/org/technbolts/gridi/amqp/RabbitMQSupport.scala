@@ -4,22 +4,24 @@ import collection.mutable.ListBuffer
 
 object RabbitMQSupport {
   import com.rabbitmq.client.{Connection, Channel}
+  import com.rabbitmq.client.AMQP.{BasicProperties => BasicProps }
+  import org.technbolts.gridi.amqp.MessageParam._
+
   def close(a:AnyRef) = a match {
-    case c:Channel => c.close
+  case c:Channel => c.close
     case c:Connection => c.close
     case x if (x==null) => // no op
     case _ => throw new IllegalArgumentException ("Unsupported type in close")
   }
 
   def closeQuietly(a:AnyRef) =
-    try{
+  try{
       close(a)
     }catch{
-      case e => //ignore we're quiet, chut!
+  case e => //ignore we're quiet, chut!
     }
 
-  import com.rabbitmq.client.AMQP.{BasicProperties => BasicProps }
-  import org.technbolts.gridi.amqp.MessageParam._
+  val noOpInitializer:(Channel)=>Unit = { channel => /* no op */ }
 
   implicit def paramsToBasicProperties(params: List[MessageParam]):BasicProps = {
     val properties = new BasicProps
