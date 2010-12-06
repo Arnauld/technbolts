@@ -91,6 +91,21 @@ sealed abstract class ExchangeBldr[T <: ExchangeBldr[T]](val amqp: AMQP, val exc
     self
   }
 
+  def durable(durable:Boolean):T = {
+    this.durable = durable
+    self
+  }
+
+  def autoDelete(autoDelete:Boolean):T = {
+    this.autoDelete = autoDelete
+    self
+  }
+
+  def fallback(routingKey:RoutingKey):T = {
+    this.fallbackRoutingKey = routingKey
+    self
+  }
+
   def initializer(callback:ChannelInitializer):T = {
     initializer = Some(callback)
     self
@@ -185,7 +200,7 @@ class QueueBldr private[amqp](amqp: AMQP, val queueName: String) {
     this
   }
 
-  def bindToDirect(exchangeName: String, routingKeys: RoutingKey*): QueueBldr = {
+  def bindTo(exchangeName: String, routingKeys: RoutingKey*): QueueBldr = {
     bindings += { channel:Channel =>
       routingKeys.foreach( r => channel.queueBind(queueName, exchangeName, r.key) )
     }
@@ -199,7 +214,7 @@ class QueueBldr private[amqp](amqp: AMQP, val queueName: String) {
     this
   }
 
-  def bindToFanout(exchangeName: String): QueueBldr = {
+  def bindTo(exchangeName: String): QueueBldr = {
     bindings += { channel:Channel =>
       channel.queueBind(queueName, exchangeName, "")
     }
@@ -213,8 +228,9 @@ class QueueBldr private[amqp](amqp: AMQP, val queueName: String) {
     this
   }
 
-  def bindToTopic(exchangeName:String, routingPatterns: RoutingPattern*): QueueBldr = {
+  def bindTo(exchangeName:String, routingPattern: RoutingPattern, routingPatterns: RoutingPattern*): QueueBldr = {
     bindings += { channel:Channel =>
+      channel.queueBind(queueName, exchangeName, routingPattern.pattern)
       routingPatterns.foreach( r => channel.queueBind(queueName, exchangeName, r.pattern) )
     }
     this
@@ -238,27 +254,75 @@ class QueueBldr private[amqp](amqp: AMQP, val queueName: String) {
     this
   }
 
+  def durable(durable:Boolean):QueueBldr = {
+    this.durable = durable
+    this
+  }
+
+  def exclusive(exclusive:Boolean):QueueBldr = {
+    this.exclusive = exclusive
+    this
+  }
+
+  def autoDelete(autoDelete:Boolean):QueueBldr = {
+    this.autoDelete = autoDelete
+    this
+  }
+
+  def autoAck(autoAck:Boolean):QueueBldr = {
+    this.autoAck = autoAck
+    this
+  }
+
+  var qos:Option[Int] = None
+  def qualityOfService(prefetchCount:Int):QueueBldr = {
+    this.qos = Some(prefetchCount)
+    this
+  }
+
+  def declareQueue:Unit = {
+    import RabbitMQSupport._
+
+    // declare the queue
+    within(amqp.connectionFactory.newConnection) { channel =>
+      val args = JavaConversions.asMap(arguments.map(e => (e._1, e._2.asInstanceOf[Object])))
+      channel.queueDeclare(queueName, durable, exclusive, autoDelete, args)
+      bindings.foreach(f => f(channel))
+    }
+  }
+
+  protected def createInitializers:List[ChannelInitializer] = {
+    val initializers = ListBuffer[ChannelInitializer]()
+    //
+    if(qos.isDefined) {
+      val prefetch = qos.get
+      initializers += { channel => channel.basicQos(prefetch) }
+    }
+
+    if(initializer.isDefined)
+      initializers += initializer.get
+    initializers.toList
+  }
+
   def start: Queue = {
-    val connection = amqp.connectionFactory.newConnection
-    val channel = connection.createChannel
-    val args = JavaConversions.asMap(arguments.map(e => (e._1, e._2.asInstanceOf[Object])))
-    channel.queueDeclare(queueName, durable, exclusive, autoDelete, args)
-    bindings.foreach(f => f(channel))
-
-    val initlzr = initializer.getOrElse(RabbitMQSupport.noOpInitializer)
-    initlzr(channel)
-
-    val consumer = new QueueImpl(channel, autoAck, queueName)
-    channel.basicConsume(queueName, autoAck, consumer)
-
-    consumer
+    declareQueue
+    new QueueImpl(amqp, autoAck, queueName, createInitializers).connect
   }
 }
 
 class QueueImpl private[amqp](
-        channel: Channel,
+        amqp: AMQP,
         val autoAck:Boolean,
-        val queueName: String) extends DefaultConsumer(channel) with Queue {
+        val queueName: String,
+        val channelInitializers:List[(Channel)=>Unit]) extends Queue with CxManager {
+
+  def connectionFactory = amqp.connectionFactory
+
+  override def configure(channel: Channel) = {
+    channelInitializers.foreach( initlzr => initlzr(channel))
+    channel.basicConsume(queueName, autoAck, newConsumer(channel))
+  }
+
   type TConsumer = (Message) => Unit
   import org.technbolts.util.LockSupport.withinLock
 
@@ -267,22 +331,27 @@ class QueueImpl private[amqp](
 
   def subscribe(callback: TConsumer):Unit = withinLock(subscribersLock) { subscribers ::= callback }
 
-  override def handleDelivery(consumerTag: String, envelope: Envelope, properties: BasicProperties, body: Array[Byte]) = {
-    import RabbitMQSupport._
-    val routingKey:Option[RoutingKey] = if(envelope.getRoutingKey==null)
-                                          None
-                                        else
-                                          Some(RoutingKey(envelope.getRoutingKey))
-    val message = new Message(body, routingKey, properties)
-    subscribers.foreach(s => s(message))
-    if (!autoAck)
-      channel.basicAck(envelope.getDeliveryTag, false)
+  def connect:QueueImpl = {
+    getChannel
+    this
   }
 
-  def dispose:Unit = {
-    import RabbitMQSupport._
-    val cx = channel.getConnection
-    closeQuietly(channel)
-    closeQuietly(cx)
+  def reconnect:Unit = {
+    dispose
+    connect
+  }
+
+  protected def newConsumer(channel:Channel) = new DefaultConsumer(channel) {
+    override def handleDelivery(consumerTag: String, envelope: Envelope, properties: BasicProperties, body: Array[Byte]) = {
+      import RabbitMQSupport._
+      val routingKey:Option[RoutingKey] = if(envelope.getRoutingKey==null)
+                                            None
+                                          else
+                                            Some(RoutingKey(envelope.getRoutingKey))
+      val message = new Message(body, routingKey, properties)
+      subscribers.foreach(s => s(message))
+      if (!autoAck)
+        channel.basicAck(envelope.getDeliveryTag, false)
+    }
   }
 }

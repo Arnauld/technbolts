@@ -1,6 +1,8 @@
 package org.technbolts.gridi.amqp
 
 import collection.mutable.ListBuffer
+import java.util.concurrent.locks.ReentrantLock
+import org.technbolts.util.LockSupport
 
 object RabbitMQSupport {
   import com.rabbitmq.client.{Connection, Channel}
@@ -8,7 +10,7 @@ object RabbitMQSupport {
   import org.technbolts.gridi.amqp.MessageParam._
 
   def close(a:AnyRef) = a match {
-  case c:Channel => c.close
+    case c:Channel => c.close
     case c:Connection => c.close
     case x if (x==null) => // no op
     case _ => throw new IllegalArgumentException ("Unsupported type in close")
@@ -22,6 +24,21 @@ object RabbitMQSupport {
     }
 
   val noOpInitializer:(Channel)=>Unit = { channel => /* no op */ }
+
+  def within[T](channel:Channel)(func: (Channel)=>T) {
+    try{
+      func(channel)
+    }
+    finally close(channel)
+  }
+
+  def within[T](connection:Connection)(func: (Channel)=>T) {
+    try{
+      within(connection.createChannel)(func)
+    }
+    finally close(connection)
+  }
+
 
   implicit def paramsToBasicProperties(params: List[MessageParam]):BasicProps = {
     val properties = new BasicProps
@@ -55,23 +72,30 @@ trait CxManager {
 
   def connectionFactory:com.rabbitmq.client.ConnectionFactory
 
+  private val cxLock = new ReentrantLock
   protected var connection:Option[Cx] = None
 
-  def getChannel:Channel = connection match {
-    case Some(cx) => cx.channel
-    case None =>
-      val connect = connectionFactory.newConnection
-      val channel = connect.createChannel
-      configure(channel)
-      connection = Some(Cx(connect,channel))
-      channel
+  import LockSupport._
+  def getChannel:Channel = withinLock(cxLock) {
+    connection match {
+      case Some(cx) => cx.channel
+      case None =>
+        val connect = connectionFactory.newConnection
+        val channel = connect.createChannel
+        configure(channel)
+        connection = Some(Cx(connect,channel))
+        channel
+    }
   }
 
-  def dispose:Unit = connection match {
-    case Some(cx) =>
-      import RabbitMQSupport._
-      closeQuietly(cx.channel)
-      closeQuietly(cx.connection)
-    case _ => // nothing to do
+  def dispose:Unit = withinLock(cxLock) {
+    connection match {
+      case Some(cx) =>
+        import RabbitMQSupport._
+        closeQuietly(cx.channel)
+        closeQuietly(cx.connection)
+        connection = None
+      case _ => // nothing to do
+    }
   }
 }
